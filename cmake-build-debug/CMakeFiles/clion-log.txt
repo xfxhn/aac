@@ -1,0 +1,5 @@
+"D:\Program Files (x86)\clion\CLion 2020.1\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=D:/Program Files (x86)/c++/bin/make.exe" -G "CodeBlocks - MinGW Makefiles" C:\Users\Administrator\Desktop\aacdecoder\aacDecoder
+-- 11C:/Users/Administrator/Desktop/aacdecoder/aacDecoder
+-- Configuring done
+-- Generating done
+-- Build files have been written to: C:/Users/Administrator/Desktop/aacdecoder/aacDecoder/cmake-build-debug

@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+C:/Users/Administrator/Desktop/aacdecoder/aacDecoder/src/bitStream/bitStream.cpp
+cstdint
+-
+bitStream.h
+C:/Users/Administrator/Desktop/aacdecoder/aacDecoder/src/bitStream/bitStream.h
+
+C:/Users/Administrator/Desktop/aacdecoder/aacDecoder/src/bitStream/bitStream.h
+
