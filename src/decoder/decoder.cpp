@@ -59,7 +59,6 @@ int Decoder::adts_sequence() {
          adts_frame();
       }*/
     return adts_frame();
-    //return 0;
 }
 
 int Decoder::adts_frame() {
