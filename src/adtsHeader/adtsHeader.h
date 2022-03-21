@@ -62,10 +62,13 @@ public:
     AdtsHeader() = default;
 
     /*ADTS 的固定标头。此标头中的信息不会因帧而异。它 在每一帧重复以允许随机访问比特流比特流*/
-    int adts_fixed_header(BitStream *bs);
+    int adts_fixed_header(BitStream &bs);
 
     /*ADTS 的可变标头。该报头与固定报头一样每帧传输， 但包含随帧变化的数据*/
-    int adts_variable_header(BitStream *bs);
+    int adts_variable_header(BitStream &bs);
+
+
+    uint16_t getFrameLength() const;
 };
 
 #endif //AACDECODER_ADTSHEADER_H

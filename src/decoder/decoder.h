@@ -6,7 +6,7 @@
 #define AACDECODER_DECODER_H
 
 #include <cstdint>
-
+#include <fstream>
 
 /*
 struct aac_buffer {
@@ -19,16 +19,25 @@ struct aac_buffer {
 };
 */
 
+
 class BitStream;
 
 class Decoder {
+    /*要填充多少字节进去*/
+    uint32_t fillByteSize{0};
+
+    bool isEof{true};
 private:
-    uint32_t fileSize{0};
+    std::ifstream file;
+
+    /*uint32_t fileSize{0};*/
+    uint32_t readFileSize{0};
+
     uint8_t *buffer{nullptr};
 
     const char *fileName{nullptr};
 
-    BitStream *bs{nullptr};
+    /*BitStream *bs{nullptr};*/
 public:
 
     explicit Decoder(const char *file);
@@ -40,6 +49,11 @@ public:
     int adts_sequence();
 
     int adts_frame();
+
+private:
+    int fillBuffer();
+
+    int advanceBuffer(uint16_t frameLength);
 };
 
 #endif //AACDECODER_DECODER_H
