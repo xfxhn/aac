@@ -47,7 +47,7 @@ private:
     uint8_t home{0};
 
     /*variable_header*/
-private:
+public:
     /*编码时设置为0，解码时忽略*/
     uint8_t copyright_identification_bit{0};
     /*编码时设置为0，解码时忽略*/
@@ -58,6 +58,9 @@ private:
     uint16_t adts_buffer_fullness{0};
     /*表示当前帧有number_of_raw_data_blocks_in_frame + 1 个原始帧(一个AAC原始帧包含一段时间内1024个采样及相关数据)。*/
     uint8_t number_of_raw_data_blocks_in_frame{0};
+
+
+    uint16_t crc_check{0};
 public:
     AdtsHeader() = default;
 
@@ -67,6 +70,9 @@ public:
     /*ADTS 的可变标头。该报头与固定报头一样每帧传输， 但包含随帧变化的数据*/
     int adts_variable_header(BitStream &bs);
 
+    int adts_error_check(BitStream &bs);
+
+    int adts_header_error_check();
 
     uint16_t getFrameLength() const;
 };

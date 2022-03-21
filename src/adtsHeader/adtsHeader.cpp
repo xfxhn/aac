@@ -35,3 +35,21 @@ int AdtsHeader::adts_variable_header(BitStream &bs) {
 uint16_t AdtsHeader::getFrameLength() const {
     return frame_length;
 }
+
+int AdtsHeader::adts_header_error_check() {
+
+    /*if (protection_absent == 0) {
+        for (int i = 1; i <= number_of_raw_data_blocks_in_frame; i++) {
+            raw_data_block_position[i];
+        }
+        crc_check;
+    }*/
+    return 0;
+}
+
+int AdtsHeader::adts_error_check(BitStream &bs) {
+    if (protection_absent == 0) {
+        crc_check = bs.getMultiBit(16);
+    }
+    return 0;
+}

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include "adtsHeader.h"
 
 /*
 struct aac_buffer {
@@ -48,7 +49,7 @@ public:
 
     int adts_sequence();
 
-    int adts_frame();
+    int adts_frame(BitStream &bs, AdtsHeader &adtsHeader);
 
 private:
     int fillBuffer();

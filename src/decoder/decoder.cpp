@@ -2,8 +2,7 @@
 #include <iostream>
 #include <cstring>
 #include "decoder.h"
-#include "bitStream.h"
-#include "adtsHeader.h"
+
 
 #define MIN_STREAMSIZE 768
 #define MAX_CHANNELS 6
@@ -72,7 +71,8 @@ int Decoder::adts_sequence() {
             AdtsHeader adtsHeader;
             adtsHeader.adts_fixed_header(bs);
             adtsHeader.adts_variable_header(bs);
-            uint16_t frameLength = adtsHeader.getFrameLength();
+
+            uint16_t frameLength = adtsHeader.frame_length;
             /*如果这一帧的长度等于0或者大于filesize的话就退出，数据不对*/
             if (frameLength == 0 || frameLength > readFileSize) {
                 break;
@@ -87,14 +87,18 @@ int Decoder::adts_sequence() {
     return 0;
 }
 
-int Decoder::adts_frame() {
+int Decoder::adts_frame(BitStream &bs, AdtsHeader &adtsHeader) {
 
-    /*AdtsHeader adtsHeader;
-    adtsHeader.adts_fixed_header(bs);
-    adtsHeader.adts_variable_header(bs);
-    uint16_t frameLength = adtsHeader.getFrameLength();*/
-
-
+    if (adtsHeader.number_of_raw_data_blocks_in_frame == 0) {
+        adtsHeader.adts_error_check(bs);
+        raw_data_block();
+    } else {
+        /* adts_header_error_check();
+         for (i = 0; i <= adtsHeader.number_of_raw_data_blocks_in_frame; i++) {
+             raw_data_block();
+             adts_raw_data_block_error_check();
+         }*/
+    }
     return 0;
 }
 
@@ -134,7 +138,13 @@ int Decoder::advanceBuffer(uint16_t frameLength) {
 }
 
 Decoder::~Decoder() {
+    if (buffer) {
+        delete[] buffer;
+        buffer = nullptr;
+    }
 
+
+    file.close();
 }
 
 
