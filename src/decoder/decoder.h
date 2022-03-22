@@ -7,7 +7,7 @@
 
 #include <cstdint>
 #include <fstream>
-#include "adtsHeader.h"
+
 
 /*
 struct aac_buffer {
@@ -22,6 +22,8 @@ struct aac_buffer {
 
 
 class BitStream;
+
+class AdtsHeader;
 
 class Decoder {
     /*要填充多少字节进去*/

@@ -2,7 +2,9 @@
 #include <iostream>
 #include <cstring>
 #include "decoder.h"
-
+#include "bitStream.h"
+#include "adtsHeader.h"
+#include "adtsData.h"
 
 #define MIN_STREAMSIZE 768
 #define MAX_CHANNELS 6
@@ -58,8 +60,8 @@ int Decoder::initDecoder() {
     return 0;
 }
 
-int Decoder::adts_sequence() {
 
+int Decoder::adts_sequence() {
     while (true) {
         fillBuffer();
         if (readFileSize > 7) {
@@ -71,6 +73,8 @@ int Decoder::adts_sequence() {
             AdtsHeader adtsHeader;
             adtsHeader.adts_fixed_header(bs);
             adtsHeader.adts_variable_header(bs);
+
+            adts_frame(bs, adtsHeader);
 
             uint16_t frameLength = adtsHeader.frame_length;
             /*如果这一帧的长度等于0或者大于filesize的话就退出，数据不对*/
@@ -88,10 +92,11 @@ int Decoder::adts_sequence() {
 }
 
 int Decoder::adts_frame(BitStream &bs, AdtsHeader &adtsHeader) {
-
+    AdtsData adtsData;
     if (adtsHeader.number_of_raw_data_blocks_in_frame == 0) {
         adtsHeader.adts_error_check(bs);
-        raw_data_block();
+        adtsData.raw_data_block(bs);
+//        raw_data_block();
     } else {
         /* adts_header_error_check();
          for (i = 0; i <= adtsHeader.number_of_raw_data_blocks_in_frame; i++) {
