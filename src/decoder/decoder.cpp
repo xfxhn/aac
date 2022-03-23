@@ -95,7 +95,7 @@ int Decoder::adts_frame(BitStream &bs, AdtsHeader &adtsHeader) {
     AdtsData adtsData;
     if (adtsHeader.number_of_raw_data_blocks_in_frame == 0) {
         adtsHeader.adts_error_check(bs);
-        adtsData.raw_data_block(bs);
+        adtsData.raw_data_block(bs, adtsHeader);
 //        raw_data_block();
     } else {
         /* adts_header_error_check();

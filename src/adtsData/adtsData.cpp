@@ -1,7 +1,10 @@
 #include <cstdint>
 #include "adtsData.h"
 #include "bitStream.h"
+#include "ICS.h"
+#include "adtsHeader.h"
 
+#define ANC_DATA 0
 enum ID_SYN_ELE {
     /*Single Channel Element单通道元素。单通道元素基本上只由一个ICS组成。一个原始数据块最可能由16个SCE组成。*/
     ID_SCE = 0x0,
@@ -26,11 +29,23 @@ enum extension_type {
     EXT_FILL = 0,
     /*比特流数据作为填充*/
     EXT_FILL_DATA = 1,
+
+    /*data element*/
+    EXT_DATA_ELEMENT = 2,
+
     /*动态范围控制*/
-    EXT_DYNAMIC_RANGE = 11
+    EXT_DYNAMIC_RANGE = 11,
+    /*MPEG环绕*/
+    EXT_SAC_DATA = 12,
+    /*SBR增强*/
+    EXT_SBR_DATA = 13,
+    /*用CRC增强SBR*/
+    EXT_SBR_DATA_CRC = 14
+
+
 };
 
-int AdtsData::raw_data_block(BitStream &bs) {
+int AdtsData::raw_data_block(BitStream &bs, AdtsHeader &adtsHeader) {
     uint8_t id = 0;
     while ((id = bs.readMultiBit(3)) != ID_END) {
         switch (id) {
@@ -38,7 +53,7 @@ int AdtsData::raw_data_block(BitStream &bs) {
 //                single_channel_element();
                 break;
             case ID_CPE:
-//                channel_pair_element();
+                channel_pair_element(bs, adtsHeader);
                 break;
             case ID_CCE:
 //                coupling_channel_element();
@@ -62,6 +77,31 @@ int AdtsData::raw_data_block(BitStream &bs) {
     return 0;
 }
 
+/*缩写CPE。 包含一对通道的数据的位流的语法元素。 一个
+Channel_pair_element()包含两个元素
+和附加的联合信道编码信息。 这两个通道可以共享共同的侧信息。
+ channel_pair_element()在element_instance_tag和出现次数方面具有与单个channel元素相同的限制(表14)。*/
+int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
+    element_instance_tag = bs.readMultiBit(4);
+    ICS ics;
+    /*指示两个 individual_channel_stream() 是否共 享一个公共 ics_info()。
+     * 在共享的情况下，ics_info() 是 channel_pair_element() 的一部分，并且必须用于两个通道。
+     * 否则，ics_info() 是每个 individual_channel_stream() 的一部分*/
+    bool common_window = bs.readBit();
+    if (common_window) {
+        ics.ics_info(bs, adtsHeader);
+        bool ms_mask_present = bs.readMultiBit(2);
+        if (ms_mask_present == 1) {
+            for (int g = 0; g < ics.num_window_groups; ++g) {
+                for (int sfb = 0; sfb < ics.max_sfb; ++sfb) {
+
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 int AdtsData::fill_element(BitStream &bs) {
     /*这里按标准看是否解析SBR功能和PS功能，现在我暂时没找到标准文档对这块功能的描述*/
 
@@ -79,29 +119,70 @@ int AdtsData::fill_element(BitStream &bs) {
     return 0;
 }
 
-int AdtsData::extension_payload(BitStream &bs, uint16_t cnt) {
+uint16_t AdtsData::extension_payload(BitStream &bs, uint16_t cnt) {
     /*fill_nibble 通常被定义为“0000”，而fill_byte 通常被定义为“10100101”（以确保自时 钟数据流，例如无线电调制解调器，可以执行可靠的时钟恢复*/
     /*4比特，表明填充单元内容的类型*/
     uint8_t extension_type = bs.readMultiBit(4);
+    uint8_t align = 4;
     switch (extension_type) {
         case EXT_DYNAMIC_RANGE:
-            n = dynamic_range_info(bs);
-            return n;
-        case EXT_FILL_DATA:
+            return dynamic_range_info(bs);
+        case EXT_SAC_DATA:
+            /*MPEG环绕*/
+            /* sac_extension_data(cnt)*/
+            return -1;
+        case EXT_SBR_DATA:
+            /*SBR增强*/
+            /* sbr_extension_data(id_aac, 0)*/
+            return -1;
+        case EXT_SBR_DATA_CRC:
+            /*用CRC增强SBR*/
+            /*return sbr_extension_data(id_aac, 1)*/
+            return -1;
+        case EXT_FILL_DATA: {
             /* must be ‘0000’ */
-            fill_nibble;
+            uint8_t fill_nibble = bs.readMultiBit(4);
             for (int i = 0; i < cnt - 1; ++i) {
-                /* must be ‘10100101’ */
-                fill_byte[i];
+                /*fill_byte[i] must be ‘10100101’ */
+                uint8_t fill_byte = bs.readMultiBit(8);
             }
             return cnt;
+        }
+        case EXT_DATA_ELEMENT: {
+            /*表示元素的版本*/
+            uint8_t data_element_version = bs.readMultiBit(4);
+            switch (data_element_version) {
+                case ANC_DATA: {
+                    uint8_t loopCounter = 0;
+                    uint8_t dataElementLength = 0;
+                    /*表示扩展有效载荷 "数据元素 "的长度
+                     * 值255被用作转义值，表示后面至少还有一个dataElementLengthPart值
+                     * 传输的 "数据元素 "的总长度是通过部分数值相加来计算的
+                     * */
+                    uint8_t dataElementLengthPart = 0;
+                    do {
+                        dataElementLengthPart = bs.readMultiBit(8);
+                        dataElementLength += dataElementLengthPart;
+                        loopCounter++;
+                    } while (dataElementLengthPart == 255);
+                    for (int i = 0; i < dataElementLength; ++i) {
+                        /*a variable indicating the partial values of the extension payload "data element" with type ‘ANC_DATA‘ in bytes */
+                        uint8_t data_element_byte = bs.readMultiBit(8);
+                    }
+                    return (dataElementLength + loopCounter + 1);
+                }
+                default:
+                    align = 0;
+            }
+        }
+        case EXT_FILL:
         default:
-            for (int j = 0; j < 8 * (cnt - 1) + 4; ++j) {
-                other_bits[i];
+            for (int j = 0; j < 8 * (cnt - 1) + align; ++j) {
+                /*other_bits[i] 被解码器丢弃的位。*/
+                uint8_t other_bits = bs.readBit();
             }
             return cnt;
     }
-    return 0;
 }
 
 /*
@@ -152,15 +233,16 @@ uint8_t AdtsData::dynamic_range_info(BitStream &bs) {
     /*表明参考电平存在*/
     prog_ref_level_present = bs.readBit();
     if (prog_ref_level_present == 1) {
-/*prog_ref_level使用7位在0.25 dB步长中量化，因此其范围约为32 dB。 表示相对于满尺度的程序级别(即低于满尺度的dB)*/
+        /*对所有频道的长期节目音频水平的衡量标准  */
         prog_ref_level = bs.readMultiBit(7);
+        /*保留*/
         prog_ref_level_reserved_bits = bs.readBit();
         n++;
     }
 
     for (int i = 0; i < drc_num_bands; ++i) {
 
-        /*动态范围控制符号信息，表明dyn_rng_ctl的符号(0为 正，1为负)*/
+        /*一位表示dyn_rng_ctl的符号(0为正，1为负)  */
         dyn_rng_sgn[i] = bs.readMultiBit(1);
 
         /*动态范围控制幅度信息*/
@@ -176,9 +258,13 @@ uint8_t AdtsData::excluded_channels(BitStream &bs) {
     uint8_t n = 0;
     uint8_t num_excl_chan = 7;
     for (int i = 0; i < 7; ++i) {
+        /*布尔数组，指示SCE、CPE或LFE不在动态范围控制中。 在传输新的掩码之前，掩码信息一直有效。 */
+        /*布尔数组，表明一个排除在DRC处理过程之外的音频声道节目 使用此DRC信息*/
         exclude_mask[i] = bs.readBit();
     }
     n++;
+
+    /*表明存在另外的隔离声道*/
     while ((additional_excluded_chns[n - 1] = bs.readBit()) == 1) {
         for (int i = 0; i < num_excl_chan + 7; ++i) {
             exclude_mask[i] = bs.readBit();
@@ -188,4 +274,6 @@ uint8_t AdtsData::excluded_channels(BitStream &bs) {
     }
     return n;
 }
+
+
 

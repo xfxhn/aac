@@ -28,6 +28,7 @@ private:
     uint8_t sampling_frequency_index{0};
     /*对应的采样率*/
     uint32_t sample_rate{0};
+    uint8_t sample_rate_index{0};
 
     /*私有位，编码时设置为0，解码时忽略
       指示是否在音频位流中添加了冗余以方便
@@ -75,6 +76,11 @@ public:
     int adts_header_error_check();
 
     uint16_t getFrameLength() const;
+
+    uint8_t get_Pred_SFB_MAX();
+
+private:
+    int set_sample_rate_index();
 };
 
 #endif //AACDECODER_ADTSHEADER_H

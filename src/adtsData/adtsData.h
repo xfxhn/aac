@@ -4,6 +4,8 @@
 
 class BitStream;
 
+class AdtsHeader;
+
 class AdtsData {
 public:
     uint8_t pce_tag_present;
@@ -22,13 +24,18 @@ public:
     uint8_t exclude_mask[7];
     uint8_t additional_excluded_chns[64];
 
+    /*CPE解析的元素*/
+private:
+    uint8_t element_instance_tag;
 public:
-    int raw_data_block(BitStream &bs);
+    int raw_data_block(BitStream &bs, AdtsHeader &adtsHeader);
 
 private:
+    int channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader);
+
     int fill_element(BitStream &bs);
 
-    int extension_payload(BitStream &bs, uint16_t cnt);
+    uint16_t extension_payload(BitStream &bs, uint16_t cnt);
 
     uint8_t dynamic_range_info(BitStream &bs);
 
