@@ -27,11 +27,15 @@ public:
 
     /*共享一组比例因子的窗口组数*/
     uint8_t num_window_groups{0};
+    /*实际窗口序列的窗口数*/
+    uint8_t num_windows{0};
+    uint8_t window_group_length[8]{0};
+
 public:
     int ics_info(BitStream &bs, AdtsHeader &adtsHeader);
 
 private:
-    int window_grouping_info();
+    int window_grouping_info(AdtsHeader &adtsHeader);
 };
 
 #endif //AACDECODER_ICS_H

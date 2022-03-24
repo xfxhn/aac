@@ -13,7 +13,7 @@ class AdtsHeader {
     static int adts_sample_rates[];
 
     /*fixed_header*/
-private:
+public:
     /*帧同步标识一个帧的开始，固定为0xFFF*/
     uint16_t syncword{0};
     /*MPEG 标示符。0表示MPEG-4，1表示MPEG-2*/

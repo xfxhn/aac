@@ -17,6 +17,9 @@ int ICS::ics_info(BitStream &bs, AdtsHeader &adtsHeader) {
     ics_reserved_bit = bs.readBit();
     window_sequence = bs.readMultiBit(2);
     window_shape = bs.readBit();
+
+    window_grouping_info(adtsHeader);
+
     if (window_sequence == EIGHT_SHORT_SEQUENCE) {
         max_sfb = bs.readMultiBit(4);
         scale_factor_grouping = bs.readMultiBit(7);
@@ -40,6 +43,17 @@ int ICS::ics_info(BitStream &bs, AdtsHeader &adtsHeader) {
     return 0;
 }
 
-int ICS::window_grouping_info() {
+int ICS::window_grouping_info(AdtsHeader &adtsHeader) {
+    uint8_t fs_index = adtsHeader.sample_rate_index;
+    switch (window_sequence) {
+        case ONLY_LONG_SEQUENCE:
+        case LONG_START_SEQUENCE:
+        case LONG_STOP_SEQUENCE: {
+            num_windows = 1;
+            num_window_groups = 1;
+            window_group_length[num_window_groups - 1] = 1;
+        }
+    }
+
     return 0;
 }
