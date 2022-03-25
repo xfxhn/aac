@@ -59,6 +59,9 @@ int AdtsHeader::adts_error_check(BitStream &bs) {
 /*参考表38*/
 /*由于给定的采样频率仅与一个采样频率表相关联，并且由于在可能的采样频率范围内需要最大的灵活性，
  * 因此应使用下表将隐含的采样频率与所需的采样频率相关表相关联。*/
+
+
+
 int AdtsHeader::set_sample_rate_index() {
     if (sample_rate >= 92017) {
         sample_rate_index = 0;//96000

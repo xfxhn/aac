@@ -30,6 +30,7 @@ public:
     /*实际窗口序列的窗口数*/
     uint8_t num_windows{0};
     uint8_t window_group_length[8]{0};
+    uint8_t num_swb{0};
 
 public:
     int ics_info(BitStream &bs, AdtsHeader &adtsHeader);
