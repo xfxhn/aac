@@ -29,8 +29,16 @@ public:
     uint8_t num_window_groups{0};
     /*实际窗口序列的窗口数*/
     uint8_t num_windows{0};
+    /*每组中Windows的个数*/
     uint8_t window_group_length[8]{0};
+    /*在EIGHT_SHORT_SEQUENCE的情况下，用于短窗口的缩放因子窗口频带数，否则用于长窗口的缩放因子窗口频带数。*/
     uint8_t num_swb{0};
+    uint8_t sect_sfb_offset[8][52]{0};
+    uint8_t swb_offset[52]{0};
+
+
+    uint8_t ms_used[8][63]{0};
+
 
 public:
     int ics_info(BitStream &bs, AdtsHeader &adtsHeader);

@@ -82,8 +82,9 @@ Channel_pair_element()包含两个元素
 和附加的联合信道编码信息。 这两个通道可以共享共同的侧信息。
  channel_pair_element()在element_instance_tag和出现次数方面具有与单个channel元素相同的限制(表14)。*/
 int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
-    element_instance_tag = bs.readMultiBit(4);
+
     ICS ics;
+    element_instance_tag = bs.readMultiBit(4);
     /*指示两个 individual_channel_stream() 是否共 享一个公共 ics_info()。
      * 在共享的情况下，ics_info() 是 channel_pair_element() 的一部分，并且必须用于两个通道。
      * 否则，ics_info() 是每个 individual_channel_stream() 的一部分*/
@@ -94,7 +95,7 @@ int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
         if (ms_mask_present == 1) {
             for (int g = 0; g < ics.num_window_groups; ++g) {
                 for (int sfb = 0; sfb < ics.max_sfb; ++sfb) {
-
+                    ics.ms_used[g][sfb] = bs.readBit();
                 }
             }
         }
