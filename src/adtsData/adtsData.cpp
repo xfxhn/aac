@@ -110,6 +110,7 @@ int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
 /*包含解码一个信道所需的数据*/
 int AdtsData::individual_channel_stream(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics, bool common_window,
                                         bool scale_flag) {
+    /*量化频谱的全局增益，以无符号整数值发送*/
     uint8_t global_gain = bs.readMultiBit(8);
     if (!common_window && !scale_flag) {
         ics.ics_info(bs, adtsHeader, common_window);
