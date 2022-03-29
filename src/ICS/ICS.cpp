@@ -6,13 +6,11 @@
 #define min(a, b) ( (a) < (b) ? (a) : (b) )
 /*返回A的第B位的值*/
 #define bit_set(A, B) ((A) & (1<<(B)))
-/*mdct的一个变换窗口的分析窗口长度N是语法元素window_sequence的函数，定义如下  */
-enum window_sequence {
-    ONLY_LONG_SEQUENCE = 0,
-    LONG_START_SEQUENCE = 1,
-    EIGHT_SHORT_SEQUENCE = 2,
-    LONG_STOP_SEQUENCE = 3
-};
+/*标度因子带的最大数量由一个常数限制：MAX_LTP_LONG_SFB=40(用于长帧) */
+#define MAX_LTP_LONG_SFB 40
+
+
+
 
 /*
  index    sample_rate     num_swb_long_window
@@ -130,7 +128,7 @@ static const uint16_t *swb_offset_short_window[] = {
         swb_offset_short_8         /* 8000  */
 };
 
-int ICS::ics_info(BitStream &bs, AdtsHeader &adtsHeader) {
+int ICS::ics_info(BitStream &bs, AdtsHeader &adtsHeader, bool common_window) {
 
     ics_reserved_bit = bs.readBit();
     window_sequence = bs.readMultiBit(2);
@@ -145,16 +143,30 @@ int ICS::ics_info(BitStream &bs, AdtsHeader &adtsHeader) {
         /*是否在当前帧中使用预测*/
         bool predictor_data_present = bs.readBit();
         if (predictor_data_present) {
-            /*是否在当前帧中应用了预测器重置*/
-            bool predictor_reset = bs.readBit();
-            if (predictor_reset) {
-                /*如果启用了预测器重置，则5bit指定要在当前帧中重置的重置组*/
-                predictor_reset_group_number = bs.readMultiBit(5);
+            if (adtsHeader.objectType == AudioObjectType::Main) {
+                /*是否在当前帧中应用了预测器重置*/
+                bool predictor_reset = bs.readBit();
+                if (predictor_reset) {
+                    /*如果启用了预测器重置，则5bit指定要在当前帧中重置的重置组*/
+                    predictor_reset_group_number = bs.readMultiBit(5);
+                }
+                uint8_t PRED_SFB_MAX = adtsHeader.get_Pred_SFB_MAX();
+                for (int sfb = 0; sfb < min(max_sfb, PRED_SFB_MAX); ++sfb) {
+                    prediction_used[sfb] = bs.readBit();
+                }
+            } else {
+                bool ltp_data_present = bs.readBit();
+                if (ltp_data_present) {
+                    ltp_data(bs, adtsHeader);
+                }
+                if (common_window) {
+                    ltp_data_present = bs.readBit();
+                    if (ltp_data_present) {
+                        ltp_data(bs, adtsHeader);
+                    }
+                }
             }
-            uint8_t PRED_SFB_MAX = adtsHeader.get_Pred_SFB_MAX();
-            for (int sfb = 0; sfb < min(max_sfb, PRED_SFB_MAX); ++sfb) {
-                prediction_used[sfb] = bs.readBit();
-            }
+
         }
     }
     window_grouping_info(adtsHeader);
@@ -199,7 +211,7 @@ int ICS::window_grouping_info(AdtsHeader &adtsHeader) {
 
             /* preparation of sect_sfb_offset for short blocks */
             for (int g = 0; g < num_window_groups; g++) {
-                uint16_t width = 0;
+                uint16_t width;
                 uint8_t sect_sfb = 0;
                 uint16_t offset = 0;
                 for (int i = 0; i < max_sfb; i++) {
@@ -216,5 +228,29 @@ int ICS::window_grouping_info(AdtsHeader &adtsHeader) {
             return -1;
     }
 
+    return 0;
+}
+
+int ICS::ltp_data(BitStream &bs, AdtsHeader &adtsHeader) {
+    uint8_t long_used[51]{0};
+    if (adtsHeader.objectType == AudioObjectType::LD) {
+        bool ltp_lag_update = bs.readBit();
+        if (ltp_lag_update) {
+            uint8_t ltp_lag = bs.readMultiBit(10);
+        }
+
+        uint8_t ltp_coef = bs.readMultiBit(3);
+        for (int sfb = 0; sfb < min(max_sfb, MAX_LTP_LONG_SFB); ++sfb) {
+            long_used[sfb] = bs.readBit();
+        }
+    } else {
+        uint16_t ltp_lag = bs.readMultiBit(11);
+        uint8_t ltp_coef = bs.readMultiBit(3);
+        if (window_sequence == EIGHT_SHORT_SEQUENCE) {
+            for (int sfb = 0; sfb < min(max_sfb, MAX_LTP_LONG_SFB); ++sfb) {
+                long_used[sfb] = bs.readBit();
+            }
+        }
+    }
     return 0;
 }

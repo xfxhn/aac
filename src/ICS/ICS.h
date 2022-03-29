@@ -5,6 +5,15 @@
 #ifndef AACDECODER_ICS_H
 #define AACDECODER_ICS_H
 
+
+/*mdct的一个变换窗口的分析窗口长度N是语法元素window_sequence的函数，定义如下  */
+enum window_sequence {
+    ONLY_LONG_SEQUENCE = 0,
+    LONG_START_SEQUENCE = 1,
+    EIGHT_SHORT_SEQUENCE = 2,
+    LONG_STOP_SEQUENCE = 3
+};
+
 class BitStream;
 
 class AdtsHeader;
@@ -39,12 +48,18 @@ public:
 
     uint8_t ms_used[8][63]{0};
 
-
+    /*用于g组第i节的Spectrum Huffman码本(见第6.3款，表17)。 */
+    uint8_t sect_cb[8][120]{0};
+    uint8_t sfb_cb[8][120]{0};
+    uint8_t sect_start[8][120]{0};
+    uint8_t sect_end[8][120]{0};
 public:
-    int ics_info(BitStream &bs, AdtsHeader &adtsHeader);
+    int ics_info(BitStream &bs, AdtsHeader &adtsHeader, bool common_window);
 
 private:
     int window_grouping_info(AdtsHeader &adtsHeader);
+
+    int ltp_data(BitStream &bs, AdtsHeader &adtsHeader);
 };
 
 #endif //AACDECODER_ICS_H

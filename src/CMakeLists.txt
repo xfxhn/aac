@@ -1,14 +1,13 @@
 
 
-message(STATUS "11${PROJECT_SOURCE_DIR}")
-
+message(STATUS "PROJECT_SOURCE_DIR${PROJECT_SOURCE_DIR}")
+add_executable(AACDecoder main.cpp)
 add_subdirectory(decoder)
 add_subdirectory(bitStream)
 add_subdirectory(adtsHeader)
 add_subdirectory(adtsData)
 add_subdirectory(ICS)
 
-add_executable(AACDecoder main.cpp)
 
 target_include_directories(AACDecoder
         PRIVATE ${PROJECT_SOURCE_DIR}/src/decoder

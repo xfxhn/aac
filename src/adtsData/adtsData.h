@@ -6,6 +6,8 @@ class BitStream;
 
 class AdtsHeader;
 
+class ICS;
+
 class AdtsData {
 public:
     uint8_t pce_tag_present;
@@ -40,6 +42,10 @@ private:
     uint8_t dynamic_range_info(BitStream &bs);
 
     uint8_t excluded_channels(BitStream &bs);
+
+    int individual_channel_stream(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics, bool common_window, bool scale_flag);
+
+    int section_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics);
 };
 
 #endif //AACDECODER_ADTSDATA_H

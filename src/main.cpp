@@ -156,7 +156,6 @@ int simplest_aac_parser(const char *url) {
 
 int main() {
 
-
     Decoder decode("./resource/z.aac");
     decode.initDecoder();
 //    simplest_aac_parser("./resource/nocturne.aac");

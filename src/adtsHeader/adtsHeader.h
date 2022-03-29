@@ -3,6 +3,16 @@
 #define AACDECODER_ADTSHEADER_H
 
 
+/* 如果ID等于' 0 '，这个元素表示MPEG-4音频对象类型(profile_ObjectType+1)，根据子句1.5.2.1中定义的表*/
+/*这里根据1521的表应该是1234*/
+enum class AudioObjectType : int {
+    Main = 0,
+    LC = 1,
+    SSR = 2,
+    LTP = 3,
+    LD = 23
+};
+
 /*全局变量是不显式用static修饰的全局变量，但全局变量默认是动态的，作用域是整个工程，在一个文件内定义的全局变量，在另一个文件中，
  * 通过extern 全局变量名的声明，就可以使用全局变量。*/
 /*全局静态变量是显式用static修饰的全局变量，作用域是声明此变量所在的文件，其他的文件即使用extern声明也不能使用。*/
@@ -24,6 +34,7 @@ public:
     uint8_t protection_absent{0};
     /*标识使用哪个级别的AAC*/
     uint8_t profile{0};
+    AudioObjectType objectType;
     /*标识使用的采样率的下标*/
     uint8_t sampling_frequency_index{0};
     /*对应的采样率*/
@@ -60,7 +71,9 @@ public:
     /*表示当前帧有number_of_raw_data_blocks_in_frame + 1 个原始帧(一个AAC原始帧包含一段时间内1024个采样及相关数据)。*/
     uint8_t number_of_raw_data_blocks_in_frame{0};
 
-
+    /*这个标志表示AAC段数据的不同编码方案。如果
+    使用编码本11，这个方案传输关于光谱线最大绝对值的额外信息。这允 许对大于此值的光谱线进行错误检测。*/
+    bool aacSectionDataResilienceFlag{false};
     uint16_t crc_check{0};
 public:
     AdtsHeader() = default;

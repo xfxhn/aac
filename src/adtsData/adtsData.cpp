@@ -90,7 +90,7 @@ int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
      * 否则，ics_info() 是每个 individual_channel_stream() 的一部分*/
     bool common_window = bs.readBit();
     if (common_window) {
-        ics.ics_info(bs, adtsHeader);
+        ics.ics_info(bs, adtsHeader, common_window);
         bool ms_mask_present = bs.readMultiBit(2);
         if (ms_mask_present == 1) {
             for (int g = 0; g < ics.num_window_groups; ++g) {
@@ -98,6 +98,69 @@ int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
                     ics.ms_used[g][sfb] = bs.readBit();
                 }
             }
+        }
+    }
+
+
+    individual_channel_stream(bs, adtsHeader, ics, common_window, false);
+    return 0;
+}
+
+
+/*包含解码一个信道所需的数据*/
+int AdtsData::individual_channel_stream(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics, bool common_window,
+                                        bool scale_flag) {
+    uint8_t global_gain = bs.readMultiBit(8);
+    if (!common_window && !scale_flag) {
+        ics.ics_info(bs, adtsHeader, common_window);
+    }
+    section_data(bs, adtsHeader, ics);
+    return 0;
+}
+
+int AdtsData::section_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics) {
+
+    uint8_t sect_esc_val;
+    uint8_t sect_bits;
+
+    if (ics.window_sequence == EIGHT_SHORT_SEQUENCE) {
+        sect_bits = 3;
+    } else {
+        sect_bits = 5;
+    }
+    sect_esc_val = (1 << sect_bits) - 1;
+    for (int g = 0; g < ics.num_window_groups; ++g) {
+        uint8_t k = 0;
+        uint8_t i = 0;
+
+        uint8_t sect_len_incr;
+        while (k < ics.max_sfb) {
+            if (adtsHeader.aacSectionDataResilienceFlag) {
+                ics.sect_cb[g][i] = bs.readMultiBit(5);
+            } else {
+                ics.sect_cb[g][i] = bs.readMultiBit(4);
+            }
+            uint16_t sect_len = 0;
+            if (!adtsHeader.aacSectionDataResilienceFlag
+                || ics.sect_cb[g][i] < 11
+                || (ics.sect_cb[g][i] > 11 && ics.sect_cb[g][i] < 16)
+                    ) {
+                while ((sect_len_incr = bs.readMultiBit(sect_bits)) == sect_esc_val) {
+                    sect_len += sect_len_incr;
+                }
+            } else {
+                sect_len_incr = 1;
+            }
+
+            sect_len += sect_len_incr;
+            ics.sect_start[g][i] = k;
+            ics.sect_end[g][i] = k + sect_len;
+
+            for (int sfb = k; sfb < k + sect_len; sfb++) {
+                ics.sfb_cb[g][sfb] = ics.sect_cb[g][i];
+            }
+            k += sect_len;
+            i++;
         }
     }
     return 0;
@@ -185,7 +248,6 @@ uint16_t AdtsData::extension_payload(BitStream &bs, uint16_t cnt) {
             return cnt;
     }
 }
-
 /*
  * 当输出的音频信号不是很大的时候，系统会按照原来的设定输出，
  * 但是当输出的音频信号过大的时候，为了保护喇叭DRC会将输出信号的幅度进行压缩将其限制在一个范围内。
@@ -275,6 +337,10 @@ uint8_t AdtsData::excluded_channels(BitStream &bs) {
     }
     return n;
 }
+
+
+
+
 
 
 

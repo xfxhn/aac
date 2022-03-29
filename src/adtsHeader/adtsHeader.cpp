@@ -13,6 +13,7 @@ int AdtsHeader::adts_fixed_header(BitStream &bs) {
     layer = bs.readMultiBit(2);
     protection_absent = bs.readMultiBit(1);
     profile = bs.readMultiBit(2);
+    objectType = static_cast<AudioObjectType>(profile);
     sampling_frequency_index = bs.readMultiBit(4);
     sample_rate = AdtsHeader::adts_sample_rates[sampling_frequency_index];
     private_bit = bs.readBit();
