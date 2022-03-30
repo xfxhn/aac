@@ -46,6 +46,10 @@ private:
     int individual_channel_stream(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics, bool common_window, bool scale_flag);
 
     int section_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics);
+
+    int scale_factor_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics);
+
+    static int is_intensity(ICS &ics, uint8_t g, uint8_t sfb);
 };
 
 #endif //AACDECODER_ADTSDATA_H

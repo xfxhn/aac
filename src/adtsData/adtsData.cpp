@@ -45,6 +45,17 @@ enum extension_type {
 
 };
 
+enum encode_type {
+    ZERO_HCB = 0,
+    FIRST_PAIR_HCB = 5,
+    ESC_HCB = 11,
+    QUAD_LEN = 4,
+    PAIR_LEN = 2,
+    INTENSITY_HCB2 = 14,
+    INTENSITY_HCB = 15,
+    ESC_FLAG = 16
+};
+
 int AdtsData::raw_data_block(BitStream &bs, AdtsHeader &adtsHeader) {
     uint8_t id = 0;
     while ((id = bs.readMultiBit(3)) != ID_END) {
@@ -83,26 +94,31 @@ Channel_pair_element()包含两个元素
  channel_pair_element()在element_instance_tag和出现次数方面具有与单个channel元素相同的限制(表14)。*/
 int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
 
-    ICS ics;
+    ICS ics1;
+    ICS ics2;
+
+
     element_instance_tag = bs.readMultiBit(4);
     /*指示两个 individual_channel_stream() 是否共 享一个公共 ics_info()。
      * 在共享的情况下，ics_info() 是 channel_pair_element() 的一部分，并且必须用于两个通道。
      * 否则，ics_info() 是每个 individual_channel_stream() 的一部分*/
     bool common_window = bs.readBit();
     if (common_window) {
-        ics.ics_info(bs, adtsHeader, common_window);
+        ics1.ics_info(bs, adtsHeader, common_window);
         bool ms_mask_present = bs.readMultiBit(2);
         if (ms_mask_present == 1) {
-            for (int g = 0; g < ics.num_window_groups; ++g) {
-                for (int sfb = 0; sfb < ics.max_sfb; ++sfb) {
-                    ics.ms_used[g][sfb] = bs.readBit();
+            for (int g = 0; g < ics1.num_window_groups; ++g) {
+                for (int sfb = 0; sfb < ics1.max_sfb; ++sfb) {
+                    ics1.ms_used[g][sfb] = bs.readBit();
                 }
             }
         }
+        ics2 = ics1;
     }
 
 
-    individual_channel_stream(bs, adtsHeader, ics, common_window, false);
+    individual_channel_stream(bs, adtsHeader, ics1, common_window, false);
+    individual_channel_stream(bs, adtsHeader, ics2, common_window, false);
     return 0;
 }
 
@@ -162,6 +178,24 @@ int AdtsData::section_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics) {
             }
             k += sect_len;
             i++;
+        }
+    }
+    return 0;
+}
+
+int AdtsData::scale_factor_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics) {
+    if (!adtsHeader.aacSectionDataResilienceFlag) {
+        bool noise_pcm_flag = true;
+        for (int g = 0; g < ics.num_window_groups; ++g) {
+            for (int sfb = 0; sfb < ics.max_sfb; ++sfb) {
+                if (ics.sfb_cb[g][sfb] != ZERO_HCB) {
+                    if (AdtsData::is_intensity(ics, g, sfb)) {
+                        /*Huffman码字来自用于尺度因子编码的Huffman码表，见第4.6.3.2款  */
+                    } else {
+
+                    }
+                }
+            }
         }
     }
     return 0;
@@ -338,6 +372,21 @@ uint8_t AdtsData::excluded_channels(BitStream &bs) {
     }
     return n;
 }
+
+/*返回强度状态的函数*/
+int AdtsData::is_intensity(ICS &ics, uint8_t g, uint8_t sfb) {
+
+    switch (ics.sfb_cb[g][sfb]) {
+        case INTENSITY_HCB:
+            return 1;
+        case INTENSITY_HCB2:
+            return -1;
+        default:
+            return 0;
+    }
+}
+
+
 
 
 
