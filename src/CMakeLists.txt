@@ -7,11 +7,12 @@ add_subdirectory(bitStream)
 add_subdirectory(adtsHeader)
 add_subdirectory(adtsData)
 add_subdirectory(ICS)
+add_subdirectory(huffman)
 
 
 target_include_directories(AACDecoder
         PRIVATE ${PROJECT_SOURCE_DIR}/src/decoder
         )
 target_link_libraries(AACDecoder
-        PRIVATE decoder bitStream adtsHeader adtsData ICS
+        PRIVATE decoder bitStream adtsHeader adtsData ICS huffman
         )

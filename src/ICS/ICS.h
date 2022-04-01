@@ -53,6 +53,9 @@ public:
     uint8_t sfb_cb[8][120]{0};
     uint8_t sect_start[8][120]{0};
     uint8_t sect_end[8][120]{0};
+
+    uint8_t global_gain{0};
+    uint16_t scale_factors[8][51]{0};
 public:
     int ics_info(BitStream &bs, AdtsHeader &adtsHeader, bool common_window);
 

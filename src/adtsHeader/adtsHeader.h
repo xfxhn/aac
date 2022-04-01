@@ -74,6 +74,7 @@ public:
     /*这个标志表示AAC段数据的不同编码方案。如果
     使用编码本11，这个方案传输关于光谱线最大绝对值的额外信息。这允 许对大于此值的光谱线进行错误检测。*/
     bool aacSectionDataResilienceFlag{false};
+    bool aacSpectralDataResilienceFlag{false};
     uint16_t crc_check{0};
 public:
     AdtsHeader() = default;

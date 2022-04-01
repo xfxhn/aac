@@ -3,6 +3,7 @@
 #include "bitStream.h"
 #include "ICS.h"
 #include "adtsHeader.h"
+#include "huffman.h"
 
 #define ANC_DATA 0
 enum ID_SYN_ELE {
@@ -51,6 +52,7 @@ enum encode_type {
     ESC_HCB = 11,
     QUAD_LEN = 4,
     PAIR_LEN = 2,
+    NOISE_HCB = 13,
     INTENSITY_HCB2 = 14,
     INTENSITY_HCB = 15,
     ESC_FLAG = 16
@@ -127,11 +129,33 @@ int AdtsData::channel_pair_element(BitStream &bs, AdtsHeader &adtsHeader) {
 int AdtsData::individual_channel_stream(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics, bool common_window,
                                         bool scale_flag) {
     /*量化频谱的全局增益，以无符号整数值发送*/
-    uint8_t global_gain = bs.readMultiBit(8);
+    ics.global_gain = bs.readMultiBit(8);
     if (!common_window && !scale_flag) {
         ics.ics_info(bs, adtsHeader, common_window);
     }
     section_data(bs, adtsHeader, ics);
+    scale_factor_data(bs, adtsHeader, ics);
+
+    if (!scale_flag) {
+        bool pulse_data_present = bs.readBit();
+        if (pulse_data_present) {
+            pulse_data(bs);
+        }
+        bool tns_data_present = bs.readBit();
+        if (tns_data_present) {
+            tns_data();
+        }
+        bool gain_control_data_present = bs.readBit();
+        if (gain_control_data_present) {
+            gain_control_data();
+        }
+    }
+
+    if (!adtsHeader.aacSpectralDataResilienceFlag) {
+
+    } else {
+        return -1;
+    }
     return 0;
 }
 
@@ -184,19 +208,49 @@ int AdtsData::section_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics) {
 }
 
 int AdtsData::scale_factor_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics) {
+
+    Huffman huffman;
+    int16_t t;
+    int16_t is_position = 0;
+    int16_t noise_energy = ics.global_gain - 90;
+    int16_t scale_factor = ics.global_gain;
     if (!adtsHeader.aacSectionDataResilienceFlag) {
         bool noise_pcm_flag = true;
         for (int g = 0; g < ics.num_window_groups; ++g) {
             for (int sfb = 0; sfb < ics.max_sfb; ++sfb) {
                 if (ics.sfb_cb[g][sfb] != ZERO_HCB) {
                     if (AdtsData::is_intensity(ics, g, sfb)) {
-                        /*Huffman码字来自用于尺度因子编码的Huffman码表，见第4.6.3.2款  */
-                    } else {
+                        /* Huffman码字来自用于尺度因子编码的Huffman码表，见第4.6.3.2款  */
+                        t = huffman.scale_factor(bs);
+                        is_position += (t - 60);
+                        ics.scale_factors[g][sfb] = is_position;
 
+                    } else {
+                        if (AdtsData::is_noise(ics, g, sfb)) {
+                            if (noise_pcm_flag) {
+                                noise_pcm_flag = false;
+                                t = bs.readMultiBit(9);
+                            } else {
+                                t = huffman.scale_factor(bs);
+                                t -= 60;
+                            }
+                            noise_energy += t;
+                            ics.scale_factors[g][sfb] = noise_energy;
+                        } else {
+                            t = huffman.scale_factor(bs);
+                            scale_factor += (t - 60);
+                            if (scale_factor < 0 || scale_factor > 255) {
+                                return -1;
+                            }
+
+                            ics.scale_factors[g][sfb] = scale_factor;
+                        }
                     }
                 }
             }
         }
+    } else {
+        return -1;
     }
     return 0;
 }
@@ -384,6 +438,85 @@ int AdtsData::is_intensity(ICS &ics, uint8_t g, uint8_t sfb) {
         default:
             return 0;
     }
+}
+
+bool AdtsData::is_noise(ICS &ics, uint8_t g, uint8_t sfb) {
+    return ics.sfb_cb[g][sfb] == NOISE_HCB;
+}
+
+int AdtsData::pulse_data(BitStream &bs) {
+
+    /*2位表示使用了多少次脉冲转义。 脉冲转义的次数从1到4。*/
+    uint8_t number_pulse = bs.readMultiBit(2);
+    /*6位，表示实现脉冲逸出的最低比例因子波段的指数。 */
+    uint8_t pulse_start_sfb = bs.readMultiBit(6);
+    uint8_t pulse_offset[4]{0};
+    uint8_t pulse_amp[4]{0};
+    for (int i = 0; i < number_pulse + 1; ++i) {
+        /*表示偏移量*/
+        pulse_offset[i] = bs.readMultiBit(5);
+        /*4位表示脉冲的无符号幅度。*/
+        pulse_amp[i] = bs.readMultiBit(4);
+    }
+    return 0;
+}
+
+int AdtsData::tns_data(BitStream &bs, ICS &ics) {
+    uint8_t start_coef_bits{0};
+    /*根据window_sequence，下面的bitstream字段的大小将根据其窗口大小为每个转换窗口切换:*/
+    uint8_t n_filt_bits = 2;
+    uint8_t length_bits = 6;
+    uint8_t order_bits = 5;
+
+    /*Window with 128 spectral lines*/
+    if (ics.window_sequence == EIGHT_SHORT_SEQUENCE) {
+        n_filt_bits = 1;
+        length_bits = 4;
+        order_bits = 3;
+    }
+
+
+    uint8_t n_filt[8]{0};
+    uint8_t coef_res[8]{0};
+    uint8_t length[8][4]{0};
+    uint8_t order[8][4]{0};
+    uint8_t direction[8][4]{0};
+    uint8_t coef_compress[8][4]{0};
+    uint8_t coef[8][4][32]{0};
+    for (int w = 0; w < ics.num_windows; ++w) {
+        /*用于窗口w的噪声整形滤波器的数目*/
+        n_filt[w] = bs.readMultiBit(n_filt_bits);
+
+        if (n_filt[w]) {
+            /*表示窗口w的传输滤波器系数分辨率的令牌，在分辨率为3位(0)和4位(1)之间切换  */
+            coef_res[w] = bs.readBit();
+            if (coef_res[w]) {
+                start_coef_bits = 4;
+            } else {
+                start_coef_bits = 3;
+            }
+        }
+
+        for (int filt = 0; filt < n_filt[w]; ++filt) {
+            /*在w窗口中应用一个滤波器的区域长度(以比例因子带为单位)  */
+            length[w][filt] = bs.readMultiBit(length_bits);
+            /*一阶噪声整形滤波器应用于窗口w  */
+            order[w][filt] = bs.readMultiBit(order_bits);
+
+            if (order[w][filt]) {
+                /*1位，表示过滤器是向上应用(0)还是向下应用(1)  */
+                direction[w][filt] = bs.readBit();
+                /*1位，表示是否从传输(1)中省略w窗口的噪声整形滤波器滤波系数的最高位(0)  */
+                coef_compress[w][filt] = bs.readBit();
+                uint8_t coef_bits = start_coef_bits - coef_compress[w][filt];
+                for (int i = 0; i < order[w][filt]; i++) {
+                    /*应用于窗口w的一个噪声整形滤波器的系数  */
+                    coef[w][filt][i] = bs.readMultiBit(coef_bits);
+                }
+            }
+        }
+    }
+    return 0;
 }
 
 
