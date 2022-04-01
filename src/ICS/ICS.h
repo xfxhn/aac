@@ -51,6 +51,8 @@ public:
     /*用于g组第i节的Spectrum Huffman码本(见第6.3款，表17)。 */
     uint8_t sect_cb[8][120]{0};
     uint8_t sfb_cb[8][120]{0};
+    /*一组中部分的数量*/
+    uint8_t num_sec[8]{0};
     uint8_t sect_start[8][120]{0};
     uint8_t sect_end[8][120]{0};
 

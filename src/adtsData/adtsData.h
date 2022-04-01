@@ -49,13 +49,17 @@ private:
 
     int scale_factor_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics);
 
+    int spectral_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics);
+
     static int is_intensity(ICS &ics, uint8_t g, uint8_t sfb);
 
     static bool is_noise(ICS &ics, uint8_t g, uint8_t sfb);
 
     static int pulse_data(BitStream &bs);
 
-    static int tns_data(BitStream &bs,ICS &ics);
+    static int tns_data(BitStream &bs, ICS &ics);
+
+    static int gain_control_data(BitStream &bs, ICS &ics);
 };
 
 #endif //AACDECODER_ADTSDATA_H

@@ -143,16 +143,18 @@ int AdtsData::individual_channel_stream(BitStream &bs, AdtsHeader &adtsHeader, I
         }
         bool tns_data_present = bs.readBit();
         if (tns_data_present) {
-            tns_data();
+            tns_data(bs, ics);
         }
         bool gain_control_data_present = bs.readBit();
+        /*get gain control data*/
         if (gain_control_data_present) {
-            gain_control_data();
+            gain_control_data(bs, ics);
         }
     }
 
     if (!adtsHeader.aacSpectralDataResilienceFlag) {
-
+        /*decode the spectral data*/
+        spectral_data(bs, adtsHeader, ics);
     } else {
         return -1;
     }
@@ -203,6 +205,7 @@ int AdtsData::section_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics) {
             k += sect_len;
             i++;
         }
+        ics.num_sec[g] = i;
     }
     return 0;
 }
@@ -252,6 +255,29 @@ int AdtsData::scale_factor_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics)
     } else {
         return -1;
     }
+    return 0;
+}
+
+int AdtsData::spectral_data(BitStream &bs, AdtsHeader &adtsHeader, ICS &ics) {
+    for (int g = 0; g < ics.num_window_groups; g++) {
+        for (int i = 0; i < ics.num_sec[g]; i++) {
+            if (ics.sect_cb[g][i] != ZERO_HCB &&
+                ics.sect_cb[g][i] != NOISE_HCB &&
+                ics.sect_cb[g][i] != INTENSITY_HCB &&
+                ics.sect_cb[g][i] != INTENSITY_HCB2) {
+                for (int k = ics.sect_sfb_offset[g][ics.sect_start[g][i]];
+                     k < ics.sect_sfb_offset[g][ics.sect_end[g][i]];) {
+                    if (ics.sect_cb[g][i] < FIRST_PAIR_HCB) {
+                        //hcod[sect_cb[g][i]][w][x][y][z]
+                        /* if (unsigned_cb[ics.sect_cb[g][i]]) {
+                             k += QUAD_LEN;
+                         }*/
+                    }
+                }
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -518,6 +544,65 @@ int AdtsData::tns_data(BitStream &bs, ICS &ics) {
     }
     return 0;
 }
+
+int AdtsData::gain_control_data(BitStream &bs, ICS &ics) {
+    uint8_t adjust_num[4][8]{0};
+    uint8_t alevcode[4][8][7]{0};
+    uint8_t aloccode[4][8][7]{0};
+    uint8_t max_band = bs.readMultiBit(2);
+    if (ics.window_sequence == ONLY_LONG_SEQUENCE) {
+        for (int bd = 1; bd <= max_band; bd++) {
+            for (int wd = 0; wd < 1; wd++) {
+                adjust_num[bd][wd] = bs.readMultiBit(2);
+                for (int ad = 0; ad < adjust_num[bd][wd]; ad++) {
+                    alevcode[bd][wd][ad] = bs.readMultiBit(4);
+                    aloccode[bd][wd][ad] = bs.readMultiBit(5);
+                }
+            }
+        }
+    } else if (ics.window_sequence == LONG_START_SEQUENCE) {
+        for (int bd = 1; bd <= max_band; bd++) {
+            for (int wd = 0; wd < 2; wd++) {
+                adjust_num[bd][wd] = bs.readMultiBit(3);
+                for (int ad = 0; ad < adjust_num[bd][wd]; ad++) {
+                    alevcode[bd][wd][ad] = bs.readMultiBit(4);
+                    if (wd == 0) {
+                        aloccode[bd][wd][ad] = bs.readMultiBit(4);
+                    } else {
+                        aloccode[bd][wd][ad] = bs.readMultiBit(2);
+                    }
+                }
+            }
+        }
+    } else if (ics.window_sequence == EIGHT_SHORT_SEQUENCE) {
+        for (int bd = 1; bd <= max_band; bd++) {
+            for (int wd = 0; wd < 8; wd++) {
+                adjust_num[bd][wd] = bs.readMultiBit(3);
+                for (int ad = 0; ad < adjust_num[bd][wd]; ad++) {
+                    alevcode[bd][wd][ad] = bs.readMultiBit(4);
+                    aloccode[bd][wd][ad] = bs.readMultiBit(2);
+                }
+            }
+        }
+    } else if (ics.window_sequence == LONG_STOP_SEQUENCE) {
+        for (int bd = 1; bd <= max_band; bd++) {
+            for (int wd = 0; wd < 2; wd++) {
+                adjust_num[bd][wd] = bs.readMultiBit(3);
+                for (int ad = 0; ad < adjust_num[bd][wd]; ad++) {
+                    alevcode[bd][wd][ad] = bs.readMultiBit(4);
+                    if (wd == 0) {
+                        aloccode[bd][wd][ad] = bs.readMultiBit(4);
+                    } else {
+                        aloccode[bd][wd][ad] = bs.readMultiBit(5);
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+
 
 
 
