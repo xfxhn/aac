@@ -132,9 +132,9 @@ int Decoder::fillBuffer() {
     return 0;
 }
 
-int Decoder::advanceBuffer(uint16_t frameLength) {
-    if (frameLength > 0 && readFileSize > 0) {
-        uint32_t size = min(frameLength, readFileSize);
+int Decoder::advanceBuffer(uint16_t length) {
+    if (length > 0 && readFileSize > 0) {
+        uint32_t size = min(length, readFileSize);
         fillByteSize += size;
         readFileSize -= size;
     }

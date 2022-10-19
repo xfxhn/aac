@@ -92,7 +92,7 @@ int AdtsHeader::set_sample_rate_index() {
     return 0;
 }
 
-uint8_t AdtsHeader::get_Pred_SFB_MAX() {
+uint8_t AdtsHeader::get_Pred_SFB_MAX() const {
     /*该变量在全局数据区分配内存*/
     /*静态局部变量在程序执行到该对象的声明处时被首次初始化，即以后的函数调用不再进行初始化*/
     /*它始终驻留在全局数据区，直到程序运行结束。但其作用域为局部作用域，当定义它的函数或语句块结束时，其作用域随之结束*/

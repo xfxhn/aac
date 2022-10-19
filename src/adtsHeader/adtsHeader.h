@@ -34,7 +34,7 @@ public:
     uint8_t protection_absent{0};
     /*标识使用哪个级别的AAC*/
     uint8_t profile{0};
-    AudioObjectType objectType;
+    AudioObjectType objectType{AudioObjectType::LC};
     /*标识使用的采样率的下标*/
     uint8_t sampling_frequency_index{0};
     /*对应的采样率*/
@@ -91,7 +91,7 @@ public:
 
     uint16_t getFrameLength() const;
 
-    uint8_t get_Pred_SFB_MAX();
+    uint8_t get_Pred_SFB_MAX() const;
 
 private:
     int set_sample_rate_index();
